@@ -6,7 +6,7 @@ const sendMail=({ name,description })=>{
     const data = {
         from: 'vijayethuraj@gmail.com',
         to: 'evijay77@gmail.com',
-        subject: 'Hello',
+        subject: 'Order Status',
         text: `Sucessfuly order placed, ProductName: ${name}, Description: ${description}`
     };
     return mg.messages().send(data).then(res=>{
