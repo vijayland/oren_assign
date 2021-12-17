@@ -1,1 +1,7 @@
-# oren_assign
+# Oren Assignment 
+
+```
+yarn
+yarn dev
+```
+

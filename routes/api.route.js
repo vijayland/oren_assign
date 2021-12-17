@@ -2,6 +2,8 @@ const router = require('express').Router();
 var bcryptjs = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client')
 const jwt = require('jsonwebtoken');
+const auth = require('../middleware/auth.js')
+const { sendMail } = require('../service/mails.js')
 
 const prisma = new PrismaClient();
 
@@ -19,36 +21,36 @@ router.post('/user/register', async (req, res, next) => {
 
     if (isExistingUser) {
       res.status(401).json({
-        msg: "User is already register ..please try to login and explore.."
+        message: "User is already register ..please try to login and explore.."
       })
     }
 
     const user = await prisma.user.create({
       data: {
-        name: name,
-        email: email,
-        password: password,
-        address: address
+        "name": name,
+        "email": email,
+        "password": password,
+        "address": address
       },
     })
 
     if (!user) {
       res.status(401).json({
         status: 401,
-        msg: "Something Wrong user not created....",
+        message: "Something Wrong user not created....",
       })
     }
 
     res.status(200).json({
       status: 200,
-      msg: "success",
+      message: "success",
       user: user
     })
 
   } catch (err) {
     res.status(500).json({
       status: 500,
-      msg: "register not done,explore register..",
+      message: "register not done,explore register..",
       error: err
     })
   }
@@ -66,7 +68,7 @@ router.post('/user/login', async (req, res, next) => {
 
     if (!isValidUser) {
       return res.status(401).json({
-        msg: "Invalid Email...",
+        message: "Invalid Email...",
         status: 404,
       })
     }
@@ -75,7 +77,7 @@ router.post('/user/login', async (req, res, next) => {
 
     if (!isValidUser) {
       res.send({
-        msg: "password don't match...",
+        message: "password don't match...",
         'status_code': 404,
       });
     }
@@ -97,25 +99,134 @@ router.post('/user/login', async (req, res, next) => {
             status: 200,
             tokenId: token,
             user: {
-              email: isValidUser.email,
-              name: isValidUser.name,
-              address: isValidUser.address
+              "email": isValidUser.email,
+              "name": isValidUser.name,
+              "address": isValidUser.address
             }
           })
         })
     }
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
+      message: "Not login"
+    })
+  }
+});
 
+router.get('/menu', auth, async (req, res, next) => {
+  try {
+    const { id, email } = await req.user;
+    const menu = await prisma.product.findMany({});
+    if (menu) {
+      res.status(200).json({
+        message: 'Ok api is working 🚀',
+        data: menu
+      })
+    }
+
+    if (!menu) {
+      res.status(401).json({
+        message: 'Data not found',
+      })
+    }
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
+      message: "something went wrong"
+    })
+  }
+});
+
+router.get('/cart', auth, async (req, res, next) => {
+  try {
+    const { id, email } = await req.user;
+    const cart = await prisma.cart.findMany({
+      select: {
+        product: true,
+        quantity: true
+      },
+
+      where: {
+        userId: id
+      }
+    })
+
+    if (cart) {
+      res.status(200).json({
+        data: cart,
+        message: 'Ok api is working 🚀'
+      });
+    }
+
+    if (!cart) {
+      res.status(401).json({
+        data: cart,
+        message: 'data not found..'
+      });
+    }
+
+  } catch (err) {
+    res.status(500).json({
+      status: 500,
+      message: "something went wrong"
+    })
+  }
+});
+
+router.post('/cart', auth, async (req, res, next) => {
+  try {
+    const { id, email } = await req.user;
+    const { productId, quantity } = await req.body;
+    const cart = await prisma.cart.create({
+      data: {
+        userId: id,
+        productId: productId,
+        quantity: quantity
+      }
+    })
+
+    if (cart) {
+      res.status(200).json({
+        status: 200,
+        data: cart,
+        message: 'Added cart sucessfull'
+      })
+    }
+
+    if (!cart) {
+      res.status(401).json({
+        status: 401,
+        message: 'cart not added'
+      })
+    }
   } catch (err) {
 
   }
 });
 
-router.get('/menu', async (req, res, next) => {
-  res.send({ message: 'Ok api is working 🚀' });
+router.post('/order', auth, async (req, res, next) => {
+  try {
+    const { id, email } = await req.user;
+    const { productId } = await req.body;
+    console.log(productId)
+    const product = await prisma.product.findFirst({
+     where:{
+        id: productId
+     }
+    })
+    
+    const send = await sendMail({ name: product.materialName, description: product.description });
+
+    if(send){
+      res.status(200).json({
+        message: send
+      })
+    }
+  } catch (err) {
+
+  }
 });
 
-router.get('/cart', async (req, res, next) => {
-  res.send({ message: 'Ok api is working 🚀' });
-});
 
 module.exports = router;
