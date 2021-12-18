@@ -114,6 +114,45 @@ router.post('/user/login', async (req, res, next) => {
   }
 });
 
+router.get('/verify-token', auth, async (req, res, next)=>{
+  try {
+      
+    // const { id, email } = auth.user;
+    let {id,email} = await req.user;
+
+    if(email){
+        const userData = await prisma.user.findFirst({
+            where: {
+                email: email,
+                id: id
+            }
+        })
+ 
+        if (userData) {
+            res.status(200).json({
+                status: 200,
+                msg: "authorized user",
+                data: {
+                  name: userData.name,
+                  email: userData.email,
+                }
+            })
+        }
+
+        if (!userData) {
+          res.status(401).json({
+              status: 401,
+              msg: "User not found",
+             
+          })
+      }
+    }
+    
+} catch (err) {
+    res.status(403).json({ err: "Error occured." });
+}
+})
+
 router.get('/menu', auth, async (req, res, next) => {
   try {
     const { id, email } = await req.user;
